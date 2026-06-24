@@ -9,8 +9,12 @@ const jwt = require('jsonwebtoken');
 
 const app = express();
 app.use(express.json());
+app.use(cors({
+  origin: "http://pk2810.in",
+  credentials: true
+}));
 app.use(cookieParser());
-app.use(cors());
+//app.use(cors());
 
 //app.use(express.static(path.join(__dirname, 'myproject/dist')));
 
@@ -158,15 +162,15 @@ app.post('/api/login', (req, res) => {
     );
 
     res.cookie("token", token, {
-      httpOnly: false,
+      httpOnly: true,
       secure: false,
       sameSite: "lax",
       maxAge: 24 * 60 * 60 * 1000
     });
 
     res.json({
-      message: "Login successful",
-      token: token
+      message: "Login successful"
+      //token: token
     });
   });
 });
