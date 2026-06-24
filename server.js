@@ -1,3 +1,5 @@
+const cookieParser = require("cookie-parser");
+const cors = require('cors');
 const express = require ('express');
 
 //const path = require('path');
@@ -7,6 +9,8 @@ const jwt = require('jsonwebtoken');
 
 const app = express();
 app.use(express.json());
+app.use(cookieParser());
+app.use(cors());
 
 //app.use(express.static(path.join(__dirname, 'myproject/dist')));
 
@@ -15,8 +19,8 @@ const SECRET_KEY = 'mysecretkey';
 
 const db = mysql.createConnection({
     host: 'localhost',
-    user:   'meetupuser',
-    password: 'meetup123',
+    user:   'root',
+    password: 'root@123',
     database: 'meetup_db'
 });
 
@@ -152,6 +156,13 @@ app.post('/api/login', (req, res) => {
         expiresIn: '1h'
       }
     );
+
+    res.cookie("token", token, {
+      httpOnly: false,
+      secure: false,
+      sameSite: "lax",
+      maxAge: 24 * 60 * 60 * 1000
+    });
 
     res.json({
       message: "Login successful",
@@ -328,13 +339,13 @@ app.get('/api/meetups', (req, res) => {
 
 app.get("/", (req, res) => {
 
-    res.send("Backend is running");
+    res.send("(edited part 3 trial) backend is running");
 
 });
 
 //////////////////////////////////////////////////////
 // START SERVER
 
-app.listen(3000, () => {
-  console.log("Server running on port 3000");
+app.listen(8000, () => {
+  console.log("Server running on port 8000");
 });
