@@ -334,6 +334,28 @@ app.get('/api/meetups', (req, res) => {
   });
 });
 
+//////////////////////////////////////////////////////
+// PROFILE = GET
+app.get('/api/profile', authenticateToken, (req, res) => {
+  const user_id = req.user.id;
+  const sql = "SELECT user_id, full_name, email, ph_number, role FROM users WHERE user_id=?";
+  db.query(sql, [user_id], (err, result) => {
+    if (err) {
+      return res.status(500).json({
+        error: err.message
+      });
+    }
+    if (result.length === 0) {
+      return res.status(404).json({
+        message: "User not found"
+      });
+    }
+    res.json({
+      user: result[0]
+    });
+  });
+});
+
 /////////////trial react route
 /*app.get('/', (req, res) => {
   res.sendFile(
