@@ -10,7 +10,7 @@ const jwt = require('jsonwebtoken');
 const app = express();
 app.use(express.json());
 app.use(cors({
-  origin: "http://pk2810.in",
+  origin: "http://localhost:3000",
   credentials: true
 }));
 app.use(cookieParser());
@@ -40,19 +40,21 @@ db.connect((err) => {
 //////////////////////////////////////////////////////
 //JWT AUTH MIDDLEWARE
 function authenticateToken(req, res, next) {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; 
-    if (!token) {
+  const token = req.cookies.token;   // read token from cookie
+
+  if (!token) {
     return res.status(401).json({
       message: "Token required"
     });
   }
+
   jwt.verify(token, SECRET_KEY, (err, user) => {
     if (err) {
       return res.status(403).json({
         message: "Invalid token"
       });
     }
+
     req.user = user;
     next();
   });
@@ -163,16 +165,33 @@ app.post('/api/login', (req, res) => {
 
     res.cookie("token", token, {
       httpOnly: true,
-      secure: false,
+      //secure: false,
       sameSite: "lax",
       maxAge: 24 * 60 * 60 * 1000
     });
 
-    res.json({
-      message: "Login successful"
+    return res.json({message: "Login successful"
       //token: token
-    });
+      });
   });
+});
+
+///////////////////////////////////////////////////
+//api/check-auth
+
+app.get("/api/check-auth", (req, res) => {
+  const token = req.cookies.token;
+
+  if (!token) {
+    return res.status(401).json({ message: "Not logged in" });
+  }
+
+  try {
+    const decoded = jwt.verify(token, SECRET_KEY);
+    return res.json({ message: "Authenticated", user: decoded });
+  } catch (error) {
+    return res.status(401).json({ message: "Invalid token" });
+  }
 });
 
 
@@ -187,6 +206,7 @@ app.post('/api/create-meetup', authenticateToken, (req, res) => {
     meetup_start_date,
     meetup_end_date,
     meetup_type,
+    price,
     category,
     max_members
   } = req.body;
@@ -194,20 +214,21 @@ app.post('/api/create-meetup', authenticateToken, (req, res) => {
   const created_by = req.user.id;
 
   const sql = `
-    INSERT INTO meetups
-    (
-      created_by,
-      title,
-      description,
-      location,
-      meetup_start_date,
-      meetup_end_date,
-      meetup_type,
-      category,
-      max_members
-    )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `;
+  INSERT INTO meetups
+  (
+    created_by,
+    title,
+    description,
+    location,
+    meetup_start_date,
+    meetup_end_date,
+    meetup_type,
+    price,
+    category,
+    max_members
+  )
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`;
 
   db.execute(
     sql,
@@ -219,6 +240,7 @@ app.post('/api/create-meetup', authenticateToken, (req, res) => {
       meetup_start_date,
       meetup_end_date,
       meetup_type,
+      price,
       category,
       max_members
     ],
@@ -237,7 +259,39 @@ app.post('/api/create-meetup', authenticateToken, (req, res) => {
     }
   );
 });
+///////////to see the list of meetups a user has subscribed to
+app.get("/api/my-subscriptions", authenticateToken, (req, res) => {
+  const user_id = req.user.id;
 
+  const sql = `
+    SELECT 
+      m.meetup_id,
+      m.title,
+      m.description,
+      m.location,
+      m.meetup_start_date,
+      m.meetup_end_date,
+      m.meetup_type,
+      m.price,
+      m.category,
+      m.max_members
+    FROM meetup_subscriptions ms
+    JOIN meetups m
+    ON ms.meetup_id = m.meetup_id
+    WHERE ms.user_id = ?
+    ORDER BY ms.subscription_id DESC
+  `;
+
+  db.query(sql, [user_id], (err, result) => {
+    if (err) {
+      return res.status(500).json({
+        error: err.message
+      });
+    }
+
+    res.json(result);
+  });
+});
 
 //////////////////////////////////////////////////////
 // 4) SUBSCRIBE TO MEETUP (FREE) = POST
@@ -328,12 +382,19 @@ app.get('/api/meetup-subscribers/:meetup_id', authenticateToken, (req, res) => {
 });
 
 /////////////////////////////////////trial////////////
-app.get('/api/meetups', (req, res) => {
-  res.json({
-    message: "Meetups route working"
+app.get('/api/meetups', authenticateToken, (req, res) => {
+  const sql = "SELECT * FROM meetups ORDER BY meetup_id DESC";
+
+  db.query(sql, (err, result) => {
+    if (err) {
+      return res.status(500).json({
+        error: err.message
+      });
+    }
+
+    res.json(result);
   });
 });
-
 //////////////////////////////////////////////////////
 // PROFILE = GET
 app.get('/api/profile', authenticateToken, (req, res) => {
@@ -355,6 +416,15 @@ app.get('/api/profile', authenticateToken, (req, res) => {
     });
   });
 });
+
+//////////////////////////////
+//api-logout
+
+app.post("/api/logout", (req, res) => {
+  res.clearCookie("token");
+  return res.json({ message: "Logged out" });
+});
+
 
 /////////////trial react route
 /*app.get('/', (req, res) => {
