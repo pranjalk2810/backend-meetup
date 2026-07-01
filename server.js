@@ -22,9 +22,9 @@ const SECRET_KEY = 'mysecretkey';
 
 
 const db = mysql.createConnection({
-    host: 'localhost',
-    user:   'root',
-    password: 'root@123',
+    host: 'localhost',                                      //host will be the public IPv4 address of the AWS Instance 
+    user:   'root',                                         //FOR LOCALMACHINE = root         //for AWS db = root
+    password: 'root@123',                                       //FOR LOCALMACHINE = root@123      //for AWS db = root
     database: 'meetup_db'
 });
 
@@ -177,7 +177,7 @@ app.post('/api/login', (req, res) => {
 });
 
 ///////////////////////////////////////////////////
-//api/check-auth
+//api/check-auth => checks the validity of token/cookie
 
 app.get("/api/check-auth", (req, res) => {
   const token = req.cookies.token;
@@ -187,7 +187,7 @@ app.get("/api/check-auth", (req, res) => {
   }
 
   try {
-    const decoded = jwt.verify(token, SECRET_KEY);
+    const decoded = jwt.verify(token, SECRET_KEY);                  //=> this is where the verification is done
     return res.json({ message: "Authenticated", user: decoded });
   } catch (error) {
     return res.status(401).json({ message: "Invalid token" });
